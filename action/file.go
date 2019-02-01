@@ -11,20 +11,22 @@ import (
 // FilePath interface
 type FilePath interface {
 	Scan(path string) error
+	Map() map[string]*fileInfo
 }
 
 type filePath struct {
-	files []*fileInfo
+	fileMap map[string]*fileInfo
 }
 
 type fileInfo struct {
 	os.FileInfo
+	path string
 }
 
 // NewFilePath return *file
 func NewFilePath() FilePath {
 	return &filePath{
-		files: []*fileInfo{},
+		fileMap: map[string]*fileInfo{},
 	}
 }
 
@@ -34,12 +36,25 @@ func (f *filePath) Scan(path string) error {
 }
 
 func (f *filePath) walk(path string, info os.FileInfo, err error) error {
-	f.files = append(f.files, &fileInfo{info})
+	if info.IsDir() {
+		return err
+	}
+	fi := &fileInfo{info, path}
+	f.fileMap[fi.Path()] = fi
 	return err
+}
+
+// Map file map
+func (f *filePath) Map() map[string]*fileInfo {
+	return f.fileMap
 }
 
 // Hash return string
 func (fi *fileInfo) Hash() string {
 	c := sha256.Sum256([]byte(fmt.Sprintf("%v%v%v", fi.Name(), fi.Size(), fi.ModTime())))
 	return hex.EncodeToString(c[:])
+}
+
+func (fi *fileInfo) Path() string {
+	return fi.path
 }
